@@ -1,4 +1,4 @@
-
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 
@@ -7,6 +7,7 @@ public class Image {
     private int height;
     // pixels[y][x][0=R,1=G,2=B]
     private int[][][] pixels; // pixels[y][x][0=R,1=G,2=B]
+	private byte[][][] pixelsByte;
 
     public int getWidth() { return width; }
     public int getHeight() { return height; }
@@ -18,6 +19,7 @@ public class Image {
         this.width = width;
         this.height = height;
         pixels = new int[height][width][3];
+		pixelsByte = new byte[height][width][3];
     }
 
     /**
@@ -28,6 +30,11 @@ public class Image {
             pixels[y][x][0] = r;
             pixels[y][x][1] = g;
             pixels[y][x][2] = b;
+			
+			//Sauvegarde dans tableau bytes
+            pixelsByte[y][x][0] = (byte) r;
+            pixelsByte[y][x][1] = (byte) g;
+            pixelsByte[y][x][2] = (byte) b;
         }
     }
 
@@ -50,5 +57,22 @@ public class Image {
 		}
 		writer.close();
 		System.out.println("Image PPM créée avec succés !");
-		}
 	}
+	
+	public void save_binaire(String filename) throws IOException {
+		FileOutputStream out = new FileOutputStream(filename);
+
+		String header = "P6\n" + width + " " + height + "\n255\n";
+		out.write(header.getBytes());
+
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				out.write(pixelsByte[y][x][0]); 
+				out.write(pixelsByte[y][x][1]); 
+				out.write(pixelsByte[y][x][2]); 
+			}
+		}
+
+        out.close();
+    }
+}
