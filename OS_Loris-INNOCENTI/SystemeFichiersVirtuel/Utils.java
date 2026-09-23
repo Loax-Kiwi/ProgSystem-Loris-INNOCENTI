@@ -1,17 +1,27 @@
 public class Utils {
 
     public static int writeInt(byte[] memory, int offset, int value) {
+<<<<<<< HEAD
 
         memory[offset]     = (byte) (value >>> 24);
         memory[offset + 1] = (byte) (value >>> 16);
         memory[offset + 2] = (byte) (value >>> 8);
         memory[offset + 3] = (byte) value;
 
+=======
+		memory[offset]     = (byte) (value >> 24);
+        memory[offset + 1] = (byte) (value >> 16);
+        memory[offset + 2] = (byte) (value >> 8);
+        memory[offset + 3] = (byte) value;
+>>>>>>> 4f646db (Etape 2 valide)
         return 4;
     }
 
     public static int readInt(byte[] memory, int offset) {
+<<<<<<< HEAD
 
+=======
+>>>>>>> 4f646db (Etape 2 valide)
         byte b1 = memory[offset];
         byte b2 = memory[offset + 1];
         byte b3 = memory[offset + 2];
@@ -25,7 +35,11 @@ public class Utils {
 
 
     public static int writeShort(byte[] memory, int offset, short value) {
+<<<<<<< HEAD
         memory[offset]     = (byte) (value >>> 8);
+=======
+        memory[offset]     = (byte) (value >> 8);
+>>>>>>> 4f646db (Etape 2 valide)
         memory[offset + 1] = (byte) value;
         return 2;
     }
@@ -35,6 +49,7 @@ public class Utils {
         byte b2 = memory[offset + 1];
 
         return (short) (((b1 & 0xFF) << 8)
+<<<<<<< HEAD
                       | (b2 & 0xFF));
     }
 
@@ -90,5 +105,8 @@ public class Utils {
         }
 
         return new String(memory, offset, taille);
+=======
+                       | (b2 & 0xFF));
+>>>>>>> 4f646db (Etape 2 valide)
     }
 }
