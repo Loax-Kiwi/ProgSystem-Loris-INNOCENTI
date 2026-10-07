@@ -27,10 +27,8 @@ public class MemoryManager {
     private void initializeFilesystem() {
         writeSuperblock();
 
-        for (int indice = 0; indice < 129; indice++) {
-            int byteIndex = BITMAP_OFFSET + (indice / 8);
-            int bitIndex = 7 - (indice % 8);
-            memory[byteIndex] |= (byte) (1 << bitIndex);
+        for (int i = 0; i < 128; i++) {
+            setBlockUsed(i, true);
         }
     }
 
@@ -64,5 +62,46 @@ public class MemoryManager {
 
     public byte[] getFilesystemMemory() {
         return memory;
+    }
+
+    public boolean setBlockUsed(int blockNumber, boolean used) {
+        if (blockNumber < 0 || blockNumber >= NUM_BLOCKS) {
+            return false;
+        }
+
+        int byteIndex = blockNumber / 8;
+        int bitPosition = blockNumber % 8;
+        int offset = BITMAP_OFFSET + byteIndex;
+
+        if (used) {
+            memory[offset] |= (byte) (1 << bitPosition);
+        } else {
+            memory[offset] &= (byte) ~(1 << bitPosition);
+        }
+
+        return true;
+    }
+
+    public int isBlockUsed(int blockNumber) {
+        if (blockNumber < 0 || blockNumber >= NUM_BLOCKS) {
+            return -1;
+        }
+
+        int byteIndex = blockNumber / 8;
+        int bitPosition = blockNumber % 8;
+        int offset = BITMAP_OFFSET + byteIndex;
+
+        return (memory[offset] >> bitPosition) & 1;
+    }
+
+    public int allocateBlock() {
+        for (int i = 129; i < NUM_BLOCKS; i++) {
+            if (isBlockUsed(i) == 0) {
+                setBlockUsed(i, true);
+                return i;
+            }
+        }
+
+        return -1;
     }
 }
