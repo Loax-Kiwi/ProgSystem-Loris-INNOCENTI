@@ -1,4 +1,6 @@
 import java.util.Arrays;
+import java.io.FileReader;
+import java.io.IOException;
 
 public class TestRunner {
 
@@ -11,6 +13,14 @@ public class TestRunner {
         testStep7();
         testStep8();
         testStep9();
+
+        if (args.length > 0) {
+                testExternalFile(args[0]);
+        } else {
+                System.out.println("[INFO] Aucun fichier externe fourni.");
+        }
+
+        System.out.println("=== TOUS LES TESTS SONT TERMINÉS ===");
     }
 
     public static void testStep2() {                                          
@@ -346,78 +356,133 @@ public class TestRunner {
     }
 
     public static void testStep9() {
-    System.out.println("=== TEST ÉTAPE 9 : Écriture et Lecture ===");
+        System.out.println("=== TEST ÉTAPE 9 : Écriture et Lecture ===");
 
-    VirtualFileSystem vfs = new VirtualFileSystem();
-    MemoryManager mm = vfs.getMemoryManager();
+        VirtualFileSystem vfs = new VirtualFileSystem();
+        MemoryManager mm = vfs.getMemoryManager();
 
-    vfs.createFile("/", "hello.txt");
-    byte[] textData = "Bonjour le monde!".getBytes();
-    boolean writeOk = vfs.writeFile(0, textData);
+        vfs.createFile("/", "hello.txt");
+        byte[] textData = "Bonjour le monde!".getBytes();
+        boolean writeOk = vfs.writeFile(0, textData);
 
-    assert writeOk : "L'écriture doit réussir";
+        assert writeOk : "L'écriture doit réussir";
 
-    Inode inode0 = new Inode(mm, 0);
-    assert inode0.getFileSize() == textData.length : "Taille de l'inode incorrecte";
+        Inode inode0 = new Inode(mm, 0);
+        assert inode0.getFileSize() == textData.length : "Taille de l'inode incorrecte";
 
-    byte[] readData = vfs.readFile(0);
-    assert Arrays.equals(textData, readData) : "Données lues différentes des données écrites";
+        byte[] readData = vfs.readFile(0);
+        assert Arrays.equals(textData, readData) : "Données lues différentes des données écrites";
 
-    vfs.createFile("/", "block512.bin");
-    byte[] data512 = new byte[512];
-    for (int i = 0; i < 512; i++) {
-        data512[i] = (byte) (i % 256);
+        vfs.createFile("/", "block512.bin");
+        byte[] data512 = new byte[512];
+        for (int i = 0; i < 512; i++) {
+                data512[i] = (byte) (i % 256);
+        }
+
+        boolean write512Ok = vfs.writeFile(1, data512);
+        assert write512Ok : "L'écriture du fichier de 512 octets doit réussir";
+
+        Inode inode1 = new Inode(mm, 1);
+        assert inode1.getFileSize() == 512 : "Taille inode doit être 512";
+
+        int[] ptrs1 = inode1.getDirectPointers();
+        assert ptrs1[0] != -1 : "Le premier pointeur direct doit être attribué";
+        assert ptrs1[1] == -1 : "Un seul pointeur direct doit être utilisé";
+
+        byte[] rawMemory = mm.getFilesystemMemory();
+        int physOffset1 = ptrs1[0] * MemoryManager.BLOCK_SIZE;
+        for (int i = 0; i < 512; i++) {
+                assert rawMemory[physOffset1 + i] == data512[i] : "Octet physique incorrect dans le bloc";
+        }
+
+        byte[] read512 = vfs.readFile(1);
+        assert Arrays.equals(data512, read512) : "Les 512 octets lus doivent correspondre";
+
+        vfs.createFile("/", "block513.bin");
+        byte[] data513 = new byte[513];
+        for (int i = 0; i < 513; i++) {
+                data513[i] = (byte) (i % 256);
+        }
+
+        boolean write513Ok = vfs.writeFile(2, data513);
+        assert write513Ok : "L'écriture du fichier de 513 octets doit réussir";
+
+        Inode inode2 = new Inode(mm, 2);
+        int[] ptrs2 = inode2.getDirectPointers();
+        assert ptrs2[0] != -1 && ptrs2[1] != -1 : "Deux pointeurs directs doivent être utilisés";
+
+        int physBlock1 = ptrs2[0] * MemoryManager.BLOCK_SIZE;
+        int physBlock2 = ptrs2[1] * MemoryManager.BLOCK_SIZE;
+
+        for (int i = 0; i < 512; i++) {
+                assert rawMemory[physBlock1 + i] == data513[i] : "Octet du bloc 1 incorrect";
+        }
+        assert rawMemory[physBlock2] == data513[512] : "Dernier octet dans le bloc 2 incorrect";
+
+        byte[] read513 = vfs.readFile(2);
+        assert Arrays.equals(data513, read513) : "Les 513 octets lus doivent correspondre";
+
+        vfs.createFile("/", "overflow.bin");
+        byte[] overflowData = new byte[11 * 512];
+        boolean writeOverflowOk = vfs.writeFile(3, overflowData);
+
+        assert !writeOverflowOk : "L'écriture de plus de 10 blocs doit être refusée";
+
+        System.out.println("[OK] Étape 9 validée !");
     }
 
-    boolean write512Ok = vfs.writeFile(1, data512);
-    assert write512Ok : "L'écriture du fichier de 512 octets doit réussir";
+     public static void testExternalFile(
+                String filename) {
 
-    Inode inode1 = new Inode(mm, 1);
-    assert inode1.getFileSize() == 512 : "Taille inode doit être 512";
+        System.out.println("=== TEST FICHIER EXTERNE ===");
 
-    int[] ptrs1 = inode1.getDirectPointers();
-    assert ptrs1[0] != -1 : "Le premier pointeur direct doit être attribué";
-    assert ptrs1[1] == -1 : "Un seul pointeur direct doit être utilisé";
+        StringBuilder builder = new StringBuilder();
 
-    byte[] rawMemory = mm.getFilesystemMemory();
-    int physOffset1 = ptrs1[0] * MemoryManager.BLOCK_SIZE;
-    for (int i = 0; i < 512; i++) {
-        assert rawMemory[physOffset1 + i] == data512[i] : "Octet physique incorrect dans le bloc";
+        try (FileReader reader = new FileReader(filename)) {
+
+                char[] buffer = new char[1024];
+
+                int count;
+
+                while ((count = reader.read(buffer)) != -1) {
+
+                builder.append(
+                        buffer,
+                        0,
+                        count);
+                }
+
+        } catch (IOException e) {
+                throw new AssertionError("Impossible de lire le fichier externe", e);
+        }
+
+        String content = builder.toString();
+
+        byte[] original = content.getBytes();
+
+        VirtualFileSystem vfs = new VirtualFileSystem();
+
+        assert vfs.createFile(
+                "/",
+                "external.txt") :
+                "Impossible de créer le fichier VFS";
+
+        assert vfs.writeFile(
+                0,
+                original) :
+                "Impossible d'écrire le fichier externe";
+
+        byte[] recovered = vfs.readFile(0);
+
+        assert recovered != null : "Les données récupérées sont nulles";
+
+        assert recovered.length == original.length : "Taille du fichier différente";
+
+        for (int i = 0; i < original.length; i++) {
+
+                assert recovered[i] == original[i] : "Différence à l'octet " + i;
+        }
+
+        System.out.println("[OK] Fichier externe correctement transféré !");
     }
-
-    byte[] read512 = vfs.readFile(1);
-    assert Arrays.equals(data512, read512) : "Les 512 octets lus doivent correspondre";
-
-    vfs.createFile("/", "block513.bin");
-    byte[] data513 = new byte[513];
-    for (int i = 0; i < 513; i++) {
-        data513[i] = (byte) (i % 256);
-    }
-
-    boolean write513Ok = vfs.writeFile(2, data513);
-    assert write513Ok : "L'écriture du fichier de 513 octets doit réussir";
-
-    Inode inode2 = new Inode(mm, 2);
-    int[] ptrs2 = inode2.getDirectPointers();
-    assert ptrs2[0] != -1 && ptrs2[1] != -1 : "Deux pointeurs directs doivent être utilisés";
-
-    int physBlock1 = ptrs2[0] * MemoryManager.BLOCK_SIZE;
-    int physBlock2 = ptrs2[1] * MemoryManager.BLOCK_SIZE;
-
-    for (int i = 0; i < 512; i++) {
-        assert rawMemory[physBlock1 + i] == data513[i] : "Octet du bloc 1 incorrect";
-    }
-    assert rawMemory[physBlock2] == data513[512] : "Dernier octet dans le bloc 2 incorrect";
-
-    byte[] read513 = vfs.readFile(2);
-    assert Arrays.equals(data513, read513) : "Les 513 octets lus doivent correspondre";
-
-    vfs.createFile("/", "overflow.bin");
-    byte[] overflowData = new byte[11 * 512];
-    boolean writeOverflowOk = vfs.writeFile(3, overflowData);
-
-    assert !writeOverflowOk : "L'écriture de plus de 10 blocs doit être refusée";
-
-    System.out.println("[OK] Étape 9 validée !");
-}
 }
