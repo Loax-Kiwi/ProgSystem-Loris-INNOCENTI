@@ -7,6 +7,7 @@ public class TestRunner {
         testStep5();
         testStep6();
         testStep7();
+        testStep8();
     }
 
     public static void testStep2() {                                          
@@ -158,8 +159,7 @@ public class TestRunner {
 
         mm.setBlockUsed(129, true);
 
-        int bitmapOffset =
-                MemoryManager.BITMAP_OFFSET + (129 / 8);
+        int bitmapOffset = MemoryManager.BITMAP_OFFSET + (129 / 8);
 
         assert (mm.getFilesystemMemory()[bitmapOffset]
                 & 0xFF) == 0x02 :
@@ -208,9 +208,8 @@ public class TestRunner {
 
         Inode inode = new Inode(mm, 4);
 
-        int expectedOffset =
-                MemoryManager.INODE_TABLE_OFFSET
-                + (4 * Inode.INODE_SIZE);
+        int expectedOffset = MemoryManager.INODE_TABLE_OFFSET
+                           + (4 * Inode.INODE_SIZE);
 
         assert inode.getInodeOffset() == expectedOffset :
                 "Offset d'inode incorrect";
@@ -243,8 +242,7 @@ public class TestRunner {
                 (short) 0644,
                 3);
 
-        byte[] memory =
-                mm.getFilesystemMemory();
+        byte[] memory = mm.getFilesystemMemory();
 
         int offset = inode.getInodeOffset();
 
@@ -294,12 +292,53 @@ public class TestRunner {
         assert inode.getFileType() == 1;
         assert inode.getFileSize() == 1024;
 
-        int[] result =
-                inode.getDirectPointers();
+        int[] result = inode.getDirectPointers();
 
         assert result[0] == 150;
         assert result[1] == 151;
 
         System.out.println("[OK] Étape 7 validée !");
+    }
+
+    public static void testStep8() {
+        System.out.println("=== TEST ÉTAPE 8 : Création Fichier ===");
+
+        VirtualFileSystem vfs =
+                new VirtualFileSystem();
+
+        boolean ok1 =
+                vfs.createFile("/", "fichier1.txt");
+
+        boolean ok2 =
+                vfs.createFile("/", "fichier2.txt");
+
+        assert ok1 :
+                "La création du premier fichier a échoué";
+
+        assert ok2 :
+                "La création du second fichier a échoué";
+
+        MemoryManager mm =
+                vfs.getMemoryManager();
+
+        Inode inode0 =
+                new Inode(mm, 0);
+
+        Inode inode1 =
+                new Inode(mm, 1);
+
+        assert inode0.getFileType() == 1 :
+                "L'inode 0 doit représenter un fichier";
+
+        assert inode1.getFileType() == 1 :
+                "L'inode 1 doit représenter un fichier";
+
+        assert inode0.getFileSize() == 0 :
+                "Le premier fichier doit être vide";
+
+        assert inode1.getFileSize() == 0 :
+                "Le second fichier doit être vide";
+
+        System.out.println("[OK] Étape 8 validée !");
     }
 }
