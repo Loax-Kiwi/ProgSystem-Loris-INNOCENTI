@@ -1,3 +1,5 @@
+import java.util.Arrays;
+
 public class TestRunner {
 
     public static void main(String[] args) {
@@ -8,6 +10,7 @@ public class TestRunner {
         testStep6();
         testStep7();
         testStep8();
+        testStep9();
     }
 
     public static void testStep2() {                                          
@@ -341,4 +344,80 @@ public class TestRunner {
 
         System.out.println("[OK] Étape 8 validée !");
     }
+
+    public static void testStep9() {
+    System.out.println("=== TEST ÉTAPE 9 : Écriture et Lecture ===");
+
+    VirtualFileSystem vfs = new VirtualFileSystem();
+    MemoryManager mm = vfs.getMemoryManager();
+
+    vfs.createFile("/", "hello.txt");
+    byte[] textData = "Bonjour le monde!".getBytes();
+    boolean writeOk = vfs.writeFile(0, textData);
+
+    assert writeOk : "L'écriture doit réussir";
+
+    Inode inode0 = new Inode(mm, 0);
+    assert inode0.getFileSize() == textData.length : "Taille de l'inode incorrecte";
+
+    byte[] readData = vfs.readFile(0);
+    assert Arrays.equals(textData, readData) : "Données lues différentes des données écrites";
+
+    vfs.createFile("/", "block512.bin");
+    byte[] data512 = new byte[512];
+    for (int i = 0; i < 512; i++) {
+        data512[i] = (byte) (i % 256);
+    }
+
+    boolean write512Ok = vfs.writeFile(1, data512);
+    assert write512Ok : "L'écriture du fichier de 512 octets doit réussir";
+
+    Inode inode1 = new Inode(mm, 1);
+    assert inode1.getFileSize() == 512 : "Taille inode doit être 512";
+
+    int[] ptrs1 = inode1.getDirectPointers();
+    assert ptrs1[0] != -1 : "Le premier pointeur direct doit être attribué";
+    assert ptrs1[1] == -1 : "Un seul pointeur direct doit être utilisé";
+
+    byte[] rawMemory = mm.getFilesystemMemory();
+    int physOffset1 = ptrs1[0] * MemoryManager.BLOCK_SIZE;
+    for (int i = 0; i < 512; i++) {
+        assert rawMemory[physOffset1 + i] == data512[i] : "Octet physique incorrect dans le bloc";
+    }
+
+    byte[] read512 = vfs.readFile(1);
+    assert Arrays.equals(data512, read512) : "Les 512 octets lus doivent correspondre";
+
+    vfs.createFile("/", "block513.bin");
+    byte[] data513 = new byte[513];
+    for (int i = 0; i < 513; i++) {
+        data513[i] = (byte) (i % 256);
+    }
+
+    boolean write513Ok = vfs.writeFile(2, data513);
+    assert write513Ok : "L'écriture du fichier de 513 octets doit réussir";
+
+    Inode inode2 = new Inode(mm, 2);
+    int[] ptrs2 = inode2.getDirectPointers();
+    assert ptrs2[0] != -1 && ptrs2[1] != -1 : "Deux pointeurs directs doivent être utilisés";
+
+    int physBlock1 = ptrs2[0] * MemoryManager.BLOCK_SIZE;
+    int physBlock2 = ptrs2[1] * MemoryManager.BLOCK_SIZE;
+
+    for (int i = 0; i < 512; i++) {
+        assert rawMemory[physBlock1 + i] == data513[i] : "Octet du bloc 1 incorrect";
+    }
+    assert rawMemory[physBlock2] == data513[512] : "Dernier octet dans le bloc 2 incorrect";
+
+    byte[] read513 = vfs.readFile(2);
+    assert Arrays.equals(data513, read513) : "Les 513 octets lus doivent correspondre";
+
+    vfs.createFile("/", "overflow.bin");
+    byte[] overflowData = new byte[11 * 512];
+    boolean writeOverflowOk = vfs.writeFile(3, overflowData);
+
+    assert !writeOverflowOk : "L'écriture de plus de 10 blocs doit être refusée";
+
+    System.out.println("[OK] Étape 9 validée !");
+}
 }
