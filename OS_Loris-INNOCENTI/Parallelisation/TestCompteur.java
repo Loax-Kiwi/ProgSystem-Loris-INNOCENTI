@@ -30,6 +30,11 @@ public class TestCompteur {
                     System.err.println("Thread interrompu : " + e.getMessage());
                 }
             }
+			
+			// Étape 3
+            int resultatFinal = CompteurDangereux.getCompteur();
+            System.out.println("Test " + test + " - Obtenu : " + resultatFinal + " | Attendu : " + valeurAttendue);
+			
         }
     }
 }
