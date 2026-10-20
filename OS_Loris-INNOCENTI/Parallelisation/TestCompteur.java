@@ -3,6 +3,11 @@ public class TestCompteur {
         int nbTests = 50;
         int nbThreads = 9;
         int nbIncrements = 1_111_111;
+		int valeurAttendue = nbThreads * nbIncrements;
+		
+		int succet = 0;
+		int minObtenue = Integer.MAX_VALUE;
+		int maxObtenue = Integer.MIN_VALUE;
 
         System.out.println("Test de Race Condition");
 
@@ -33,8 +38,26 @@ public class TestCompteur {
 			
 			// Étape 3
             int resultatFinal = CompteurDangereux.getCompteur();
-            System.out.println("Test " + test + " - Obtenu : " + resultatFinal + " | Attendu : " + valeurAttendue);
+            System.out.println("Test " + test + " | Obtenu : " + resultatFinal + " | Attendu : " + valeurAttendue);
 			
+			// Étape 4
+			if (resultatFinal == valeurAttendue) {
+				succet++;
+			}
+			
+			if (resultatFinal < minObtenue) {
+				resultatFinal = minObtenue;
+			}
+			
+			if (resultatFinal > maxObtenue) {
+				resultatFinal = maxObtenue;
+			}
+			
+			double pourcentageDeReussite;
         }
+		System.out.println("Valeur attendue : " +valeurAttendue);
+		System.out.println("Pourcentage de réussite : " + ((double)succet / nbTests * 100) + "%");
+		System.out.println("Valeur minimale obtenue : " + minObtenue);
+		System.out.println("Valeur maximale obtenue : " + maxObtenue);
     }
 }
